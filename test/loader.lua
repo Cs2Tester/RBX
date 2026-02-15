@@ -1,4 +1,4 @@
-local MAIN_SCRIPT_URL = "https://raw.githubusercontent.com/yourusername/yourrepo/main/main.lua"
+local MAIN_SCRIPT_URL = "https://raw.githubusercontent.com/Cs2Tester/RBX/refs/heads/main/test/main.lua"
 
 local player = game:GetService("Players").LocalPlayer
 local tweenService = game:GetService("TweenService")
