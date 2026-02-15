@@ -26,57 +26,126 @@ local Aimbot = {
 
 local AimConnection
 local LastTarget = nil
-local fovCircle
+local fovCircle = nil
+local fovCircleGui = nil
 
 local function createFOVCircle()
-    if fovCircle then fovCircle:Destroy() end
-    
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "FOVCircle"
-    if gethui then
-        screenGui.Parent = gethui()
-    elseif syn and syn.protect_gui then
-        syn.protect_gui(screenGui)
-        screenGui.Parent = game.CoreGui
-    else
-        screenGui.Parent = game.CoreGui
+    -- Clean up existing circle
+    if fovCircle then
+        pcall(function()
+            fovCircle:Destroy()
+        end)
+        fovCircle = nil
     end
     
+    if fovCircleGui then
+        pcall(function()
+            fovCircleGui:Destroy()
+        end)
+        fovCircleGui = nil
+    end
+    
+    if not Aimbot.FOV.Enabled then return end
+    
+    -- Create ScreenGui
+    fovCircleGui = Instance.new("ScreenGui")
+    fovCircleGui.Name = "FOVCircle"
+    fovCircleGui.ResetOnSpawn = false
+    fovCircleGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    -- Handle protected GUI environments
+    local success, result = pcall(function()
+        if gethui then
+            fovCircleGui.Parent = gethui()
+        elseif syn and syn.protect_gui then
+            syn.protect_gui(fovCircleGui)
+            fovCircleGui.Parent = game.CoreGui
+        else
+            fovCircleGui.Parent = game:GetService("CoreGui")
+        end
+    end)
+    
+    if not success or not fovCircleGui.Parent then
+        fovCircleGui.Parent = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui") or Instance.new("ScreenGui")
+    end
+    
+    -- Create the circle frame
     fovCircle = Instance.new("Frame")
     fovCircle.Name = "Circle"
     fovCircle.Size = UDim2.new(0, Aimbot.FOV.Radius * 2, 0, Aimbot.FOV.Radius * 2)
     fovCircle.Position = UDim2.new(0.5, -Aimbot.FOV.Radius, 0.5, -Aimbot.FOV.Radius)
+    fovCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     fovCircle.BackgroundTransparency = 1
-    fovCircle.Parent = screenGui
+    fovCircle.BorderSizePixel = 0
+    fovCircle.Parent = fovCircleGui
     
-    local circle = Instance.new("UICorner")
-    circle.CornerRadius = UDim.new(1, 0)
-    circle.Parent = fovCircle
+    -- Add corner for circular shape
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = fovCircle
     
+    -- Add stroke for outline
     local stroke = Instance.new("UIStroke")
     stroke.Color = Aimbot.FOV.Color
     stroke.Thickness = 2
+    stroke.Transparency = Aimbot.FOV.Visible and 0 or 1
     stroke.Parent = fovCircle
     
-    fovCircle.Visible = Aimbot.FOV.Visible and Aimbot.FOV.Enabled
+    -- Add a transparent inner frame for better visibility
+    local innerFrame = Instance.new("Frame")
+    innerFrame.Size = UDim2.new(1, -4, 1, -4)
+    innerFrame.Position = UDim2.new(0, 2, 0, 2)
+    innerFrame.BackgroundColor3 = Aimbot.FOV.Color
+    innerFrame.BackgroundTransparency = 0.9
+    innerFrame.BorderSizePixel = 0
+    innerFrame.Parent = fovCircle
     
-    return screenGui
+    local innerCorner = Instance.new("UICorner")
+    innerCorner.CornerRadius = UDim.new(1, 0)
+    innerCorner.Parent = innerFrame
+    
+    fovCircle.Visible = Aimbot.FOV.Enabled and Aimbot.FOV.Visible
 end
 
 local function updateFOVCircle()
-    if Aimbot.FOV.Enabled then
-        if not fovCircle then
+    if not fovCircle then
+        if Aimbot.FOV.Enabled then
             createFOVCircle()
         else
-            fovCircle.Size = UDim2.new(0, Aimbot.FOV.Radius * 2, 0, Aimbot.FOV.Radius * 2)
-            fovCircle.Position = UDim2.new(0.5, -Aimbot.FOV.Radius, 0.5, -Aimbot.FOV.Radius)
-            if fovCircle:FindFirstChildOfClass("UIStroke") then
-                fovCircle:FindFirstChildOfClass("UIStroke").Color = Aimbot.FOV.Color
-            end
-            fovCircle.Visible = Aimbot.FOV.Visible
+            return
         end
-    elseif fovCircle then
-        fovCircle.Visible = false
+    end
+    
+    if not fovCircle or not fovCircleGui then return end
+    
+    if Aimbot.FOV.Enabled then
+        -- Update size
+        fovCircle.Size = UDim2.new(0, Aimbot.FOV.Radius * 2, 0, Aimbot.FOV.Radius * 2)
+        fovCircle.Position = UDim2.new(0.5, -Aimbot.FOV.Radius, 0.5, -Aimbot.FOV.Radius)
+        
+        -- Update stroke
+        local stroke = fovCircle:FindFirstChildOfClass("UIStroke")
+        if stroke then
+            stroke.Color = Aimbot.FOV.Color
+            stroke.Transparency = Aimbot.FOV.Visible and 0 or 1
+        end
+        
+        -- Update inner frame
+        local innerFrame = fovCircle:FindFirstChild("Frame")
+        if innerFrame then
+            innerFrame.BackgroundColor3 = Aimbot.FOV.Color
+            innerFrame.BackgroundTransparency = Aimbot.FOV.Visible and 0.9 or 1
+        end
+        
+        fovCircle.Visible = true
+        fovCircleGui.Enabled = true
+    else
+        if fovCircle then
+            fovCircle.Visible = false
+        end
+        if fovCircleGui then
+            fovCircleGui.Enabled = false
+        end
     end
 end
 
@@ -84,8 +153,13 @@ local function IsPlayerValid(player)
     if not player then return false end
     if not player.Character then return false end
     if player == LocalPlayer then return false end
-    if player.Team and LocalPlayer.Team and Aimbot.TeamCheck and player.Team == LocalPlayer.Team then return false end
     
+    -- Team check
+    if Aimbot.TeamCheck and player.Team and LocalPlayer.Team then
+        if player.Team == LocalPlayer.Team then return false end
+    end
+    
+    -- Check if character exists and is alive
     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return false end
     if humanoid.Health <= 0 then return false end
@@ -142,27 +216,27 @@ local function IsVisible(part)
     local direction = (part.Position - origin).Unit * 1000
     
     local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {character}
+    raycastParams.FilterDescendantsInstances = {character, part.Parent}
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
     raycastParams.IgnoreWater = true
     
     local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
     
-    if raycastResult then
-        local hitPart = raycastResult.Instance
-        return hitPart:IsDescendantOf(part.Parent)
-    end
-    
-    return false
+    return raycastResult == nil
 end
 
 local function AimAt(targetPosition, smoothness)
+    if not targetPosition then return end
+    
     if Aimbot.AimMethod == "Camera" then
         local camera = Workspace.CurrentCamera
+        if not camera then return end
+        
         local current = camera.CFrame
         local target = CFrame.lookAt(camera.CFrame.Position, targetPosition)
         
         camera.CFrame = current:Lerp(target, smoothness)
+        
     elseif Aimbot.AimMethod == "Mouse" then
         local screenPoint = Camera:WorldToScreenPoint(targetPosition)
         
@@ -172,19 +246,39 @@ local function AimAt(targetPosition, smoothness)
         local delta = targetPos - currentPos
         local smoothedDelta = delta * smoothness
         
-        mousemoverel(smoothedDelta.X, smoothedDelta.Y)
+        -- Use mousemoverel if available, otherwise use alternative method
+        local success, result = pcall(function()
+            mousemoverel(smoothedDelta.X, smoothedDelta.Y)
+        end)
+        
+        if not success then
+            -- Alternative method if mousemoverel is not available
+            local mouse = LocalPlayer:GetMouse()
+            if mouse then
+                mouse.X = mouse.X + smoothedDelta.X
+                mouse.Y = mouse.Y + smoothedDelta.Y
+            end
+        end
     end
 end
 
 local function AimbotLoop()
     if not Aimbot.Enabled then return end
     
+    -- Update FOV circle position
+    if Aimbot.FOV.Enabled and fovCircleGui then
+        fovCircleGui.Enabled = Aimbot.FOV.Visible
+    end
+    
     local isAimKeyPressed = false
     
-    if Aimbot.AimKey.EnumType == Enum.UserInputType then
-        isAimKeyPressed = UserInputService:IsMouseButtonPressed(Aimbot.AimKey)
-    elseif Aimbot.AimKey.EnumType == Enum.KeyCode then
-        isAimKeyPressed = UserInputService:IsKeyDown(Aimbot.AimKey)
+    -- Check if aim key is pressed
+    if Aimbot.AimKey then
+        if Aimbot.AimKey.EnumType == Enum.UserInputType then
+            isAimKeyPressed = UserInputService:IsMouseButtonPressed(Aimbot.AimKey)
+        elseif Aimbot.AimKey.EnumType == Enum.KeyCode then
+            isAimKeyPressed = UserInputService:IsKeyDown(Aimbot.AimKey)
+        end
     end
     
     if isAimKeyPressed then
@@ -207,20 +301,23 @@ local function AimbotLoop()
     end
 end
 
-local function EnableAimbot(aimPart, smoothness, aimKey, aimMethod, useFOV, fovRadius)
+local function EnableAimbot(aimPart, smoothness, aimKey, aimMethod)
     Aimbot.Enabled = true
     Aimbot.AimPart = aimPart or "Head"
     Aimbot.Smoothness = smoothness or 0.1
     Aimbot.AimMethod = aimMethod or "Camera"
     
+    -- Handle aim key
     if aimKey then
         if typeof(aimKey) == "EnumItem" then
             Aimbot.AimKey = aimKey
         elseif typeof(aimKey) == "string" then
+            -- Try to parse as KeyCode first
             local keyCode = Enum.KeyCode[aimKey]
             if keyCode then
                 Aimbot.AimKey = keyCode
             else
+                -- Try to parse as UserInputType
                 local userInputType = Enum.UserInputType[aimKey]
                 if userInputType then
                     Aimbot.AimKey = userInputType
@@ -242,6 +339,11 @@ local function EnableAimbot(aimPart, smoothness, aimKey, aimMethod, useFOV, fovR
     end
     
     AimConnection = RunService.RenderStepped:Connect(AimbotLoop)
+    
+    -- Create FOV circle if enabled
+    if Aimbot.FOV.Enabled then
+        createFOVCircle()
+    end
 end
 
 local function DisableAimbot()
@@ -251,6 +353,11 @@ local function DisableAimbot()
         AimConnection = nil
     end
     LastTarget = nil
+    
+    -- Hide FOV circle
+    if fovCircleGui then
+        fovCircleGui.Enabled = false
+    end
 end
 
 local function UpdateAimPart(aimPart)
@@ -291,7 +398,17 @@ local function UpdateFOVSettings(fovSettings)
     if fovSettings.Radius ~= nil then Aimbot.FOV.Radius = fovSettings.Radius end
     if fovSettings.Color ~= nil then Aimbot.FOV.Color = fovSettings.Color end
     if fovSettings.Visible ~= nil then Aimbot.FOV.Visible = fovSettings.Visible end
-    updateFOVCircle()
+    
+    -- Recreate or update FOV circle
+    if Aimbot.FOV.Enabled then
+        if not fovCircle then
+            createFOVCircle()
+        else
+            updateFOVCircle()
+        end
+    elseif fovCircleGui then
+        fovCircleGui.Enabled = false
+    end
 end
 
 local function GetFOVSettings()
@@ -300,7 +417,15 @@ end
 
 local function ToggleFOV()
     Aimbot.FOV.Enabled = not Aimbot.FOV.Enabled
-    updateFOVCircle()
+    if Aimbot.FOV.Enabled then
+        if not fovCircle then
+            createFOVCircle()
+        else
+            updateFOVCircle()
+        end
+    elseif fovCircleGui then
+        fovCircleGui.Enabled = false
+    end
     return Aimbot.FOV.Enabled
 end
 
@@ -344,6 +469,27 @@ local function GetAimbotSettings()
     }
 end
 
+-- Cleanup function
+local function Cleanup()
+    if fovCircleGui then
+        fovCircleGui:Destroy()
+        fovCircleGui = nil
+    end
+    if AimConnection then
+        AimConnection:Disconnect()
+        AimConnection = nil
+    end
+end
+
+-- Handle character respawn
+LocalPlayer.CharacterAdded:Connect(function()
+    -- Recreate FOV circle if needed
+    if Aimbot.FOV.Enabled and Aimbot.FOV.Visible then
+        task.wait(1) -- Wait for character to load
+        createFOVCircle()
+    end
+end)
+
 return {
     EnableAimbot = EnableAimbot,
     DisableAimbot = DisableAimbot,
@@ -361,5 +507,6 @@ return {
     GetCurrentTarget = GetCurrentTarget,
     IsAimbotEnabled = IsAimbotEnabled,
     GetAimbotSettings = GetAimbotSettings,
-    updateFOVCircle = updateFOVCircle
+    updateFOVCircle = updateFOVCircle,
+    Cleanup = Cleanup
 }
