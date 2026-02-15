@@ -11,8 +11,10 @@ if not parentGui then
     parentGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 end
 
+-- Table to store all connections for easy cleanup
 local Connections = {}
 
+------------------ WATERMARK (auto‑sizing) ------------------
 local WatermarkGui = Instance.new("ScreenGui")
 local WatermarkFrame = Instance.new("Frame")
 local WatermarkText = Instance.new("TextLabel")
@@ -28,8 +30,8 @@ WatermarkFrame.Parent = WatermarkGui
 WatermarkFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 WatermarkFrame.BorderSizePixel = 0
 WatermarkFrame.AnchorPoint = Vector2.new(1, 0)
-WatermarkFrame.Position = UDim2.new(1, -180, 0, -40)
-WatermarkFrame.Size = UDim2.new(0, 200, 0, 25)
+WatermarkFrame.Position = UDim2.new(1, -180, 0, -40)  -- 10px from right, 5px from top
+WatermarkFrame.Size = UDim2.new(0, 200, 0, 25)    -- initial, will be resized
 WatermarkFrame.BackgroundTransparency = 0.2
 
 WatermarkText.Name = "WatermarkText"
@@ -43,12 +45,13 @@ WatermarkText.TextColor3 = Color3.fromRGB(255, 255, 255)
 WatermarkText.TextSize = 13
 WatermarkText.TextXAlignment = Enum.TextXAlignment.Right
 
+-- Function to resize frame to fit text
 local function resizeWatermark()
     local text = WatermarkText.Text
     local fontSize = WatermarkText.TextSize
     local font = WatermarkText.Font
     local textSize = TextService:GetTextSize(text, fontSize, font, Vector2.new(1000, 1000))
-    WatermarkFrame.Size = UDim2.new(0, textSize.X + 10, 0, 25)
+    WatermarkFrame.Size = UDim2.new(0, textSize.X + 10, 0, 25)  -- +10 for padding
 end
 
 local frameCount = 0
@@ -66,8 +69,9 @@ local fpsUpdateConn = RunService.RenderStepped:Connect(function()
     end
 end)
 table.insert(Connections, fpsUpdateConn)
-resizeWatermark()
+resizeWatermark()  -- initial resize
 
+------------------ SETTINGS ------------------
 local Settings = {
     Toggles = {
         BoxESP = false,
@@ -84,8 +88,8 @@ local Settings = {
         Target = Color3.fromRGB(255, 255, 0),
         FOV = Color3.fromRGB(255, 0, 0),
         FOVLocked = Color3.fromRGB(0, 255, 0),
-        TeamEnemy = Color3.fromRGB(227, 52, 52),
-        TeamFriend = Color3.fromRGB(88, 217, 24),
+        TeamEnemy = Color3.fromRGB(227, 52, 52),    -- red
+        TeamFriend = Color3.fromRGB(88, 217, 24),   -- green
     },
     Sky = {
         Ambient = Color3.fromRGB(0, 0, 0),
@@ -100,6 +104,7 @@ local Settings = {
     }
 }
 
+-- Helper: apply current sky settings
 local function applySky()
     if Settings.Toggles.SkyMod then
         Lighting.Ambient = Settings.Sky.Ambient
@@ -118,6 +123,7 @@ local function applySky()
     end
 end
 
+------------------ MAIN MENU ------------------
 local Menu = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
@@ -131,7 +137,7 @@ local StatusText = Instance.new("TextLabel")
 
 Menu.Name = "PlutoRIVALS"
 Menu.Parent = parentGui
-Menu.Enabled = true
+Menu.Enabled = true   -- start visible
 Menu.ResetOnSpawn = false
 Menu.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -139,7 +145,7 @@ MainFrame.Name = "MainFrame"
 MainFrame.Parent = Menu
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -130)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -130)  -- centered
 MainFrame.Size = UDim2.new(0, 300, 0, 260)
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -154,6 +160,7 @@ Title.Text = "PlutoRIVALS"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 
+-- Tab buttons
 local tabY = 30
 EspTab.Name = "EspTab"
 EspTab.Parent = MainFrame
@@ -188,6 +195,7 @@ SkyTab.Text = "SKY"
 SkyTab.TextColor3 = Color3.fromRGB(255, 255, 255)
 SkyTab.TextSize = 12
 
+-- Content frames (ScrollingFrame)
 local contentY = 60
 local contentHeight = 165
 EspContent.Name = "EspContent"
@@ -220,6 +228,7 @@ SkyContent.CanvasSize = UDim2.new(0, 0, 0, 0)
 SkyContent.ScrollBarThickness = 4
 SkyContent.Visible = false
 
+-- Status text (always visible)
 StatusText.Name = "StatusText"
 StatusText.Parent = MainFrame
 StatusText.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -231,6 +240,7 @@ StatusText.Text = "Hold RMB for silent aim"
 StatusText.TextColor3 = Color3.fromRGB(200, 200, 200)
 StatusText.TextSize = 11
 
+-- Tab switching
 table.insert(Connections, EspTab.MouseButton1Click:Connect(function()
     EspTab.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
     AimTab.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -258,6 +268,7 @@ table.insert(Connections, SkyTab.MouseButton1Click:Connect(function()
     SkyContent.Visible = true
 end))
 
+------------------ HELPER FUNCTIONS FOR UI ------------------
 local function makeToggle(parent, text, y, settingPath)
     local btn = Instance.new("TextButton")
     btn.Name = text.."Toggle"
@@ -343,6 +354,7 @@ local function makeColorPicker(parent, label, y, colorRef, applyFunc)
     return frame
 end
 
+------------------ POPULATE ESP TAB ------------------
 local espY = 5
 makeToggle(EspContent, "Box ESP", espY, "BoxESP")
 espY = espY + 25
@@ -366,12 +378,14 @@ espY = espY + 45
 
 EspContent.CanvasSize = UDim2.new(0, 0, 0, espY + 10)
 
+------------------ POPULATE AIM TAB ------------------
 local aimY = 5
 makeToggle(AimContent, "Silent Aim", aimY, "SilentAim")
 aimY = aimY + 25
 makeToggle(AimContent, "FOV Circle", aimY, "FOVCircle")
 aimY = aimY + 25
 
+-- FOV size control
 local fovFrame = Instance.new("Frame")
 fovFrame.Parent = AimContent
 fovFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -440,10 +454,12 @@ aimY = aimY + 45
 
 AimContent.CanvasSize = UDim2.new(0, 0, 0, aimY + 10)
 
+------------------ POPULATE SKY TAB ------------------
 local skyY = 5
 makeToggle(SkyContent, "Sky Mod", skyY, "SkyMod")
 skyY = skyY + 30
 
+-- Dropdown to select sky property
 local propFrame = Instance.new("Frame")
 propFrame.Parent = SkyContent
 propFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -484,6 +500,7 @@ end))
 
 skyY = skyY + 45
 
+-- Color picker for selected property
 local skyColorFrame = Instance.new("Frame")
 skyColorFrame.Parent = SkyContent
 skyColorFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -544,6 +561,7 @@ end))
 
 skyY = skyY + 45
 
+-- Brightness slider
 local brightFrame = Instance.new("Frame")
 brightFrame.Parent = SkyContent
 brightFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -584,6 +602,7 @@ end))
 skyY = skyY + 45
 SkyContent.CanvasSize = UDim2.new(0, 0, 0, skyY + 10)
 
+------------------ ORIGINAL FUNCTIONALITY (ESP, AIM, etc.) ------------------
 local scriptLoaded = true
 local currentTarget = nil
 local originalMaterials = {}
@@ -680,6 +699,7 @@ local function getTarget()
     return bestTarget
 end
 
+-- Drawing objects
 local function NewLine()
     local line = Drawing.new("Line")
     line.Visible = false
@@ -773,6 +793,7 @@ local function updateESP()
                     lines.Tracer.Visible = false
                 end
 
+                -- Determine box color
                 local boxColor
                 if Settings.Toggles.TeamCheck then
                     boxColor = isEnemy(v) and Settings.Colors.TeamEnemy or Settings.Colors.TeamFriend
@@ -809,6 +830,7 @@ local function updateESP()
     end
 end
 
+-- FOV Circle
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = Settings.Toggles.FOVCircle
 FOVCircle.Radius = Settings.Aim.FOV
@@ -818,6 +840,7 @@ FOVCircle.Thickness = 2
 FOVCircle.NumSides = 60
 FOVCircle.Filled = false
 
+-- Aim logic
 table.insert(Connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.MouseButton2 and Settings.Toggles.SilentAim then
@@ -842,6 +865,7 @@ local renderConn = RunService.RenderStepped:Connect(function()
     end
     updateESP()
 
+    -- Update FOV circle
     local mousePos = UserInputService:GetMouseLocation()
     FOVCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
     FOVCircle.Radius = Settings.Aim.FOV
@@ -850,6 +874,7 @@ local renderConn = RunService.RenderStepped:Connect(function()
 end)
 table.insert(Connections, renderConn)
 
+-- Player connections
 table.insert(Connections, Players.PlayerAdded:Connect(function(player)
     if player ~= LocalPlayer then
         createESPForPlayer(player)
@@ -884,6 +909,8 @@ for _, player in pairs(Players:GetPlayers()) do
     end
 end
 
+------------------ KEYBINDS ------------------
+-- Toggle menu with Right Ctrl
 table.insert(Connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.RightControl then
@@ -891,27 +918,37 @@ table.insert(Connections, UserInputService.InputBegan:Connect(function(input, ga
     end
 end))
 
+-- Unload everything with End key
 table.insert(Connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.End then
+        -- Disable script loops
         scriptLoaded = false
+        
+        -- Destroy GUIs
         if Menu then Menu:Destroy() end
         if WatermarkGui then WatermarkGui:Destroy() end
+        
+        -- Disconnect all connections
         for _, conn in ipairs(Connections) do
             pcall(function() conn:Disconnect() end)
         end
+        
+        -- Remove all ESP lines
         for _, lines in pairs(ESPObjects) do
             for _, line in pairs(lines) do
                 pcall(function() line:Remove() end)
             end
         end
         ESPObjects = nil
+        
+        -- Remove FOV circle
         if FOVCircle then
             pcall(function() FOVCircle:Remove() end)
         end
+        
+        -- Clear any remaining references
         Connections = {}
+        print("PlutoRIVALS unloaded.")
     end
 end))
-]='
-
-loadstring(mainScript)()
