@@ -52,6 +52,7 @@ local function createFOVCircle()
     fovCircleGui.Name = "FOVCircle"
     fovCircleGui.ResetOnSpawn = false
     fovCircleGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    fovCircleGui.IgnoreGuiInset = true
     
     -- Handle protected GUI environments
     local success, result = pcall(function()
@@ -73,6 +74,7 @@ local function createFOVCircle()
     fovCircle = Instance.new("Frame")
     fovCircle.Name = "Circle"
     fovCircle.Size = UDim2.new(0, Aimbot.FOV.Radius * 2, 0, Aimbot.FOV.Radius * 2)
+    -- Position will be updated every frame to follow mouse
     fovCircle.Position = UDim2.new(0.5, -Aimbot.FOV.Radius, 0.5, -Aimbot.FOV.Radius)
     fovCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     fovCircle.BackgroundTransparency = 1
@@ -93,6 +95,7 @@ local function createFOVCircle()
     
     -- Add a transparent inner frame for better visibility
     local innerFrame = Instance.new("Frame")
+    innerFrame.Name = "InnerFrame"
     innerFrame.Size = UDim2.new(1, -4, 1, -4)
     innerFrame.Position = UDim2.new(0, 2, 0, 2)
     innerFrame.BackgroundColor3 = Aimbot.FOV.Color
@@ -119,9 +122,14 @@ local function updateFOVCircle()
     if not fovCircle or not fovCircleGui then return end
     
     if Aimbot.FOV.Enabled then
+        -- Get mouse position
+        local mousePos = UserInputService:GetMouseLocation()
+        
+        -- Update position to follow mouse (centered on cursor)
+        fovCircle.Position = UDim2.new(0, mousePos.X - Aimbot.FOV.Radius, 0, mousePos.Y - Aimbot.FOV.Radius)
+        
         -- Update size
         fovCircle.Size = UDim2.new(0, Aimbot.FOV.Radius * 2, 0, Aimbot.FOV.Radius * 2)
-        fovCircle.Position = UDim2.new(0.5, -Aimbot.FOV.Radius, 0.5, -Aimbot.FOV.Radius)
         
         -- Update stroke
         local stroke = fovCircle:FindFirstChildOfClass("UIStroke")
@@ -131,7 +139,7 @@ local function updateFOVCircle()
         end
         
         -- Update inner frame
-        local innerFrame = fovCircle:FindFirstChild("Frame")
+        local innerFrame = fovCircle:FindFirstChild("InnerFrame")
         if innerFrame then
             innerFrame.BackgroundColor3 = Aimbot.FOV.Color
             innerFrame.BackgroundTransparency = Aimbot.FOV.Visible and 0.9 or 1
@@ -172,6 +180,8 @@ local function GetClosestPlayerToMouse()
     local closestPlayer = nil
     local closestDistance = math.huge
     
+    local mousePos = UserInputService:GetMouseLocation()
+    
     for _, player in pairs(Players:GetPlayers()) do
         if IsPlayerValid(player) then
             local character = player.Character
@@ -181,7 +191,6 @@ local function GetClosestPlayerToMouse()
                 local screenPoint, onScreen = Camera:WorldToViewportPoint(aimPart.Position)
                 
                 if onScreen then
-                    local mousePos = UserInputService:GetMouseLocation()
                     local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - mousePos).Magnitude
                     
                     if Aimbot.FOV.Enabled then
@@ -263,12 +272,10 @@ local function AimAt(targetPosition, smoothness)
 end
 
 local function AimbotLoop()
-    if not Aimbot.Enabled then return end
+    -- Update FOV circle position every frame (follows mouse)
+    updateFOVCircle()
     
-    -- Update FOV circle position
-    if Aimbot.FOV.Enabled and fovCircleGui then
-        fovCircleGui.Enabled = Aimbot.FOV.Visible
-    end
+    if not Aimbot.Enabled then return end
     
     local isAimKeyPressed = false
     
